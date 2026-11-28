@@ -82,3 +82,13 @@ CREATE TABLE IF NOT EXISTS favorites (
   place_id TEXT NOT NULL REFERENCES places(id) ON DELETE CASCADE,
   PRIMARY KEY (user_id, place_id)
 );
+
+CREATE TABLE IF NOT EXISTS posts (
+  id TEXT PRIMARY KEY NOT NULL,
+  content TEXT NOT NULL CHECK (length(trim(content)) > 0),
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS posts_created_at
+  ON posts(created_at DESC, id DESC);

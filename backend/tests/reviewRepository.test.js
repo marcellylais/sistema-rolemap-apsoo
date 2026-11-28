@@ -94,3 +94,87 @@ test('buscas sem resultados retornam null ou listas vazias', () => {
     assert.deepEqual(repository.findByUserId('missing'), []);
   } finally { database.close(); }
 });
+
+test('lista avaliações públicas mais recentes primeiro', () => {
+  const { database, repository } = setup();
+
+  try {
+    repository.create(makeReview({
+      id: 'r1',
+      createdAt: new Date('2025-01-01T10:00:00.000Z'),
+    }));
+
+    repository.create(makeReview({
+      id: 'r2',
+      userId: 'u2',
+      createdAt: new Date('2025-03-01T10:00:00.000Z'),
+    }));
+
+    repository.create(makeReview({
+      id: 'r3',
+      placeId: 'p2',
+      createdAt: new Date('2025-02-01T10:00:00.000Z'),
+    }));
+
+    const reviews = repository.findRecentPublic();
+
+    assert.deepEqual(
+      reviews.map((review) => review.id),
+      ['r2', 'r3', 'r1'],
+    );
+  } finally {
+    database.close();
+  }
+});
+
+test('não exibe avaliações com nota ocultada pela moderação', () => {
+  const { database, repository } = setup();
+
+  try {
+    repository.create(makeReview({ id: 'r1' }));
+    repository.create(makeReview({
+      id: 'r2',
+      userId: 'u2',
+      placeId: 'p2',
+    }));
+
+    database.prepare(`
+      INSERT INTO review_content_moderation
+        (review_id, target_type, visibility_state, updated_at)
+      VALUES (?, 'rating', 'auto_hidden', CURRENT_TIMESTAMP)
+    `).run('r1');
+
+    const reviews = repository.findRecentPublic();
+
+    assert.deepEqual(reviews.map((review) => review.id), ['r2']);
+  } finally {
+    database.close();
+  }
+});
+
+test('mantém avaliação no feed quando somente o comentário está ocultado', () => {
+  const { database, repository } = setup();
+
+  try {
+    repository.create(makeReview({
+      id: 'r1',
+      comment: 'Comentário denunciado',
+    }));
+
+    database.prepare(`
+      INSERT INTO review_content_moderation
+        (review_id, target_type, visibility_state, updated_at)
+      VALUES (?, 'comment', 'auto_hidden', CURRENT_TIMESTAMP)
+    `).run('r1');
+
+    const reviews = repository.findRecentPublic();
+
+    assert.equal(reviews.length, 1);
+    assert.equal(reviews[0].id, 'r1');
+    assert.equal(reviews[0].comment, null);
+    assert.equal(reviews[0].commentHidden, true);
+    assert.equal(reviews[0].rating, 4);
+  } finally {
+    database.close();
+  }
+});

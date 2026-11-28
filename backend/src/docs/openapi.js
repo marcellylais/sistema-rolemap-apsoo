@@ -75,6 +75,62 @@ const schemas = {
       updatedAt: { type: 'string', format: 'date-time', example: '2026-01-15T10:30:00.000Z' },
     },
   },
+  Post: {
+    type: 'object',
+    properties: {
+      id: { type: 'string', example: 'post-1' },
+      content: { type: 'string', example: 'Conheci um lugar incrível hoje!' },
+      userId: { type: 'string', example: 'user-1' },
+      authorName: { type: 'string', example: 'Ana Souza' },
+      createdAt: {
+        type: 'string',
+        example: '2026-11-28 10:00:00',
+      },
+    },
+  },
+  PostCreateRequest: {
+    type: 'object',
+    required: ['content'],
+    properties: {
+      content: {
+        type: 'string',
+        minLength: 1,
+        example: 'Conheci um lugar incrível hoje!',
+      },
+    },
+  },
+  FeedPost: {
+    allOf: [
+      ref('Post'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: {
+            type: 'string',
+            enum: ['post'],
+            example: 'post',
+          },
+        },
+      },
+    ],
+  },
+  FeedReview: {
+    allOf: [
+      ref('Review'),
+      {
+        type: 'object',
+        required: ['type'],
+        properties: {
+          type: {
+            type: 'string',
+            enum: ['review'],
+            example: 'review',
+          },
+        },
+      },
+    ],
+  },
   Itinerary: {
     type: 'object',
     properties: {
@@ -471,6 +527,87 @@ const paths = {
         '204': success('Favorito removido; resposta sem corpo.'),
         '400': error('placeId inválido.'), '401': error('Token ausente ou inválido.'),
         '403': error('Operação não permitida.'), '404': error('Favorito não encontrado.'),
+        '500': error('Erro interno.'),
+      },
+    },
+  },
+    '/api/posts': {
+    get: {
+      tags: ['Posts'],
+      summary: 'Lista as postagens mais recentes',
+      parameters: [
+        queryParam(
+          'limit',
+          { type: 'integer', minimum: 1, maximum: 100 },
+          'Quantidade máxima de postagens retornadas.',
+          20,
+        ),
+      ],
+      responses: {
+        '200': success(
+          'Lista de postagens em ordem decrescente de criação.',
+          { type: 'array', items: ref('Post') },
+        ),
+        '400': error('Limite inválido.'),
+        '500': error('Erro interno.'),
+      },
+    },
+    post: {
+      ...protectedOperation,
+      tags: ['Posts'],
+      summary: 'Cria uma postagem para o usuário autenticado',
+      description: 'A identidade do autor é obtida do token JWT.',
+      requestBody: body('PostCreateRequest', {
+        content: 'Conheci um lugar incrível hoje!',
+      }),
+      responses: {
+        '201': success('Postagem criada.', ref('Post')),
+        ...writeErrors,
+      },
+    },
+  },
+  '/api/posts/{id}': {
+    delete: {
+      ...protectedOperation,
+      tags: ['Posts'],
+      summary: 'Exclui uma postagem própria ou de outro usuário se for administrador',
+      parameters: [pathParam('id', 'post-1')],
+      responses: {
+        '204': success('Postagem excluída; resposta sem corpo.'),
+        ...writeErrors,
+        '404': error('Postagem não encontrada.'),
+      },
+    },
+  },
+
+    '/api/feed': {
+    get: {
+      tags: ['Feed'],
+      summary: 'Lista as postagens e avaliações públicas mais recentes',
+      description: 'Retorna postagens da comunidade e avaliações em ordem decrescente de criação. Avaliações com nota oculta pela moderação não são incluídas. Comentários ocultos são apresentados sem o texto.',
+      parameters: [
+        queryParam(
+          'limit',
+          { type: 'integer', minimum: 1, maximum: 100 },
+          'Quantidade máxima de itens retornados.',
+          20,
+        ),
+      ],
+      responses: {
+        '200': success(
+          'Itens do feed em ordem decrescente de criação.',
+          {
+            type: 'array',
+            items: {
+              oneOf: [
+                ref('FeedPost'),
+                ref('FeedReview'),
+              ],
+              description: 'Cada item possui o campo type, com valor post ou review.',
+            },
+          },
+        ),
+        '400': error('Limite inválido.'),
         '500': error('Erro interno.'),
       },
     },
