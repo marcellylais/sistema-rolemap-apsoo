@@ -19,7 +19,7 @@ test('cria schema idempotentemente e habilita foreign keys em cada conexão', ()
     assert.equal(first.pragma('foreign_keys', { simple: true }), 1);
     assert.equal(initializeSchema(first), first);
     assert.deepEqual(first.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map(({ name }) => name), [
-      'favorites', 'itineraries', 'itinerary_places', 'places',
+      'favorites', 'itineraries', 'itinerary_places', 'places','posts',
       'review_content_moderation', 'review_reports', 'reviews', 'users',
     ]);
   } finally { first.close(); }

@@ -7,6 +7,8 @@ import { createReviewRouter } from './routes/reviewRoutes.js';
 import { createItineraryRouter } from './routes/itineraryRoutes.js';
 import { createFavoriteRouter } from './routes/favoriteRoutes.js';
 import { swaggerSpec } from './docs/openapi.js';
+import { createPostRouter } from './routes/postRoutes.js';
+import { createFeedRouter } from './routes/feedRoutes.js';
 
 const REQUIRED_DEPENDENCIES = [
   'userController',
@@ -14,6 +16,8 @@ const REQUIRED_DEPENDENCIES = [
   'reviewController',
   'itineraryController',
   'favoriteController',
+  'postController',
+  'feedController',
   'authenticateToken',
 ];
 
@@ -35,6 +39,8 @@ export function createApp(dependencies = {}) {
     reviewController,
     itineraryController,
     favoriteController,
+    postController,
+    feedController,
     authenticateToken,
     corsOptions = {},
   } = dependencies;
@@ -48,6 +54,8 @@ export function createApp(dependencies = {}) {
   app.use('/api/places', createPlaceRouter(placeController, authenticateToken));
   app.use('/api/reviews', createReviewRouter(reviewController, authenticateToken));
   app.use('/api/itineraries', createItineraryRouter(itineraryController, authenticateToken));
+  app.use('/api/posts', createPostRouter(postController, authenticateToken));
+  app.use('/api/feed', createFeedRouter(feedController));
   app.use('/api/favorites', createFavoriteRouter(favoriteController, authenticateToken));
 
   return app;

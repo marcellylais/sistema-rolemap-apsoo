@@ -112,6 +112,31 @@ export class ReviewRepository {
     return this.#publicReviews('r.user_id = ?', [userId]);
   }
 
+findRecentPublic(limit = 20) {
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new TypeError('Review limit must be between 1 and 100.');
+  }
+
+  const rows = this.database.prepare(`
+    SELECT
+      ${PUBLIC_REVIEW_COLUMNS},
+      rating_moderation.visibility_state AS rating_visibility_state,
+      comment_moderation.visibility_state AS comment_visibility_state
+    FROM reviews AS r
+    LEFT JOIN review_content_moderation AS rating_moderation
+      ON rating_moderation.review_id = r.id
+      AND rating_moderation.target_type = 'rating'
+    LEFT JOIN review_content_moderation AS comment_moderation
+      ON comment_moderation.review_id = r.id
+      AND comment_moderation.target_type = 'comment'
+    WHERE rating_moderation.review_id IS NULL
+    ORDER BY r.created_at DESC, r.id DESC
+    LIMIT ?
+  `).all(limit);
+
+  return rows.map(toPublicReview).filter(Boolean);
+}
+
   delete(id) {
     const result = this.database.prepare('DELETE FROM reviews WHERE id = ?').run(id);
     return result.changes > 0;
